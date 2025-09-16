@@ -29,7 +29,7 @@ class VanishImmediateScheduler : IScheduler
 
         if (dueTime > TimeSpan.Zero)
         {
-            System.Threading.Thread.Sleep(dueTime);
+            Thread.Sleep(dueTime);
         }
         action(this, state);
         return Disposable.Empty;
@@ -448,50 +448,50 @@ static class Program
 {
     public static void Main()
     {
-        Console.WriteLine("================================");
-        Console.WriteLine("=== Testing VanishDefaultScheduler ===");
-        TestScheduler(new VanishDefaultScheduler(), "Default");
-        Console.WriteLine("=== Testing VanishDefaultScheduler Done ===");
-        Console.WriteLine("================================\n\n\n");
+        // Console.WriteLine("================================");
+        // Console.WriteLine("=== Testing VanishDefaultScheduler ===");
+        // TestScheduler(new VanishDefaultScheduler(), "Default");
+        // Console.WriteLine("=== Testing VanishDefaultScheduler Done ===");
+        // Console.WriteLine("================================\n\n\n");
 
-        Console.WriteLine("================================");
-        Console.WriteLine("=== Testing VanishNewThreadScheduler ===");
-        TestScheduler(new VanishNewThreadScheduler(), "NewThread");
-        Console.WriteLine("=== Testing VanishNewThreadScheduler Done ===");
-        Console.WriteLine("================================\n\n\n");
+        // Console.WriteLine("================================");
+        // Console.WriteLine("=== Testing VanishNewThreadScheduler ===");
+        // TestScheduler(new VanishNewThreadScheduler(), "NewThread");
+        // Console.WriteLine("=== Testing VanishNewThreadScheduler Done ===");
+        // Console.WriteLine("================================\n\n\n");
 
-        Console.WriteLine("================================");
-        Console.WriteLine("=== Testing VanishEventLoopScheduler ===");
-        using var eventLoopScheduler = new VanishEventLoopScheduler();
-        TestScheduler(eventLoopScheduler, "EventLoop");
-        Console.WriteLine("=== Testing VanishEventLoopScheduler Done ===");
-        Console.WriteLine("================================\n\n\n");
+        // Console.WriteLine("================================");
+        // Console.WriteLine("=== Testing VanishEventLoopScheduler ===");
+        // using var eventLoopScheduler = new VanishEventLoopScheduler();
+        // TestScheduler(eventLoopScheduler, "EventLoop");
+        // Console.WriteLine("=== Testing VanishEventLoopScheduler Done ===");
+        // Console.WriteLine("================================\n\n\n");
 
-        Console.WriteLine("================================");
-        Console.WriteLine("=== Testing VanishImmediateScheduler ===");
-        TestSchedulerWithSubscribeOn(
-            new VanishImmediateScheduler(),
-            new VanishEventLoopScheduler(),
-            "Immediate"
-        );
-        Console.WriteLine("=== Testing VanishImmediateScheduler Done ===");
-        Console.WriteLine("================================\n\n\n");
+        // Console.WriteLine("================================");
+        // Console.WriteLine("=== Testing VanishImmediateScheduler ===");
+        // TestSchedulerWithSubscribeOn(
+        //     new VanishImmediateScheduler(),
+        //     new VanishEventLoopScheduler(),
+        //     "Immediate"
+        // );
+        // Console.WriteLine("=== Testing VanishImmediateScheduler Done ===");
+        // Console.WriteLine("================================\n\n\n");
 
-        Console.WriteLine("================================");
-        Console.WriteLine("=== Testing VanishCurrentThreadScheduler ===");
-        TestSchedulerWithSubscribeOn(
-            new VanishCurrentThreadScheduler(),
-            new VanishEventLoopScheduler(),
-            "CurrentThread"
-        );
-        Console.WriteLine("=== Testing VanishCurrentThreadScheduler Done ===");
-        Console.WriteLine("================================\n\n\n");
+        // Console.WriteLine("================================");
+        // Console.WriteLine("=== Testing VanishCurrentThreadScheduler ===");
+        // TestSchedulerWithSubscribeOn(
+        //     new VanishCurrentThreadScheduler(),
+        //     new VanishEventLoopScheduler(),
+        //     "CurrentThread"
+        // );
+        // Console.WriteLine("=== Testing VanishCurrentThreadScheduler Done ===");
+        // Console.WriteLine("================================\n\n\n");
 
-        Console.WriteLine("================================");
-        Console.WriteLine("=== Testing VanishImmediateScheduler ===");
-        TestScheduler(new VanishImmediateScheduler(), "Immediate");
-        Console.WriteLine("=== Testing VanishImmediateScheduler Done ===");
-        Console.WriteLine("================================\n\n\n");
+        // Console.WriteLine("================================");
+        // Console.WriteLine("=== Testing VanishImmediateScheduler ===");
+        // TestScheduler(new VanishImmediateScheduler(), "Immediate");
+        // Console.WriteLine("=== Testing VanishImmediateScheduler Done ===");
+        // Console.WriteLine("================================\n\n\n");
 
         Console.WriteLine("================================");
         Console.WriteLine("=== Testing VanishCurrentThreadScheduler ===");
@@ -556,14 +556,14 @@ static class Program
 
             IDisposable ScheduleNext(IScheduler sch, long counter)
             {
-                return sch.Schedule(
+                return sch.Schedule( // 调度器返回的IDisposable, 可能可以用于取消还未开始的任务
                     counter,
                     period,
                     (innerScheduler, current) =>
                     {
                         observer.OnNext(current);
                         serialDisposable.Disposable = ScheduleNext(innerScheduler, current + 1);
-                        return Disposable.Empty;
+                        return Disposable.Empty; // 回调函数返回的Disposable.Empty表示回调函数已经执行完毕,没有需要处理的中间资源.
                     }
                 );
             }
@@ -571,5 +571,19 @@ static class Program
             serialDisposable.Disposable = ScheduleNext(scheduler, 0L);
             return serialDisposable;
         });
+        /*
+        * 调用栈1: Main() 
+        * → VanishInterval() 
+        * → ScheduleNext(scheduler, 0)
+        * → scheduler.Schedule()  ← 立即返回(调度器的立即返回,对于ImmediateScheduler来说,他的立即返回是Sleep(1000)后再返回)
+        * → 函数结束
+        *
+        * 调用栈2: 调度器线程
+        * → 执行回调函数
+        * → observer.OnNext(0)
+        * → ScheduleNext(innerScheduler, 1)  ← 新的调用栈
+        * → innerScheduler.Schedule()  ← 立即返回
+        * → 回调函数结束
+        */
     }
 }
